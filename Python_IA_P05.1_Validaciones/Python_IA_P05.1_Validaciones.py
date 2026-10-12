@@ -1,127 +1,167 @@
-## 3MLIDTS-CarlosPerez-05Python
-### Formulario de registro
-
+## 3MLIDTS-CarlosPerez-05.1Python
+### Formulario de registro con validaciones
+import os
 import tkinter as tk
 from tkinter import messagebox
-import re
+from datetime import datetime
+ 
+# El TXT se guarda junto a este archivo .py, sin importar desde dónde se ejecute
+RUTA_ARCHIVO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "datos.txt")
+COLOR_ERROR = "#ffcccc"
  
  
+### Funciones de validación
+def es_texto_valido(valor):
+    # Solo letras (con acentos y ñ) y espacios, de 2 a 40 caracteres
+    return 2 <= len(valor) <= 40 and valor.replace(" ", "").isalpha()
+ 
+ 
+def es_edad_valida(valor):
+    return valor.isdecimal() and 1 <= int(valor) <= 120
+ 
+ 
+def es_estatura_valida(valor):
+    try:
+        return 0.5 <= float(valor) <= 2.5
+    except ValueError:
+        return False
+ 
+ 
+def limitar_digitos(texto, maximo):
+    # Se ejecuta en cada tecla: solo permite números y hasta "maximo" dígitos
+    return texto == "" or (texto.isdecimal() and len(texto) <= int(maximo))
+ 
+ 
+### Funciones de los botones
 def guardar_datos():
-    # Obtener los datos de los campos
-    nombres = entry_nombres.get()
-    apellidos = entry_apellidos.get()
-    edad = entry_edad.get()
-    estatura = entry_estatura.get()
-    telefono = entry_telefono.get()
+    # Obtener los datos (strip quita espacios sobrantes)
+    nombres = entry_nombres.get().strip()
+    apellidos = entry_apellidos.get().strip()
+    edad = entry_edad.get().strip()
+    estatura = entry_estatura.get().strip().replace(",", ".")
+    telefono = entry_telefono.get().strip()
+    genero = var_genero.get()
  
-    # Obtener el género seleccionado
-    genero = ""
-    if var_genero.get() == 1:
-        genero = "Hombre"
-    elif var_genero.get() == 2:
-        genero = "Mujer"
+    # Cada regla: (campo, ¿es válido?, mensaje de error)
+    reglas = [
+        (entry_nombres, es_texto_valido(nombres), "Nombres: solo letras (mínimo 2)."),
+        (entry_apellidos, es_texto_valido(apellidos), "Apellidos: solo letras (mínimo 2)."),
+        (entry_edad, es_edad_valida(edad), "Edad: debe estar entre 1 y 120."),
+        (entry_estatura, es_estatura_valida(estatura), "Estatura: entre 0.5 y 2.5 m (ej. 1.70)."),
+        (entry_telefono, telefono.isdecimal() and len(telefono) == 10, "Teléfono: deben ser 10 dígitos."),
+    ]
  
-    # Validar que los campos tengan el formato correcto
-    if (es_entero_valido(edad) and es_decimal_valido(estatura) and
-        es_entero_valido_de_10_digitos(telefono) and es_texto_valido(nombres) and es_texto_valido(apellidos)):
-        # Crear una cadena con los datos
-        datos = f"Nombres: {nombres}\nApellidos: {apellidos}\nEdad: {edad} años\nEstatura: {estatura} cm\nTeléfono: {telefono}\nGénero: {genero}"
+    # Pinta de rojo los campos incorrectos y junta los mensajes
+    errores = []
+    for entry, valido, mensaje in reglas:
+        entry.config(bg="white" if valido else COLOR_ERROR)
+        if not valido:
+            errores.append(mensaje)
+    if genero == "":
+        errores.append("Género: seleccione una opción.")
  
-        # Guardar los datos en un archivo de texto
-        with open("datos.txt", "a") as archivo:
+    if errores:
+        messagebox.showwarning("Datos inválidos", "\n".join(errores))
+        return
+ 
+    # Armar el registro (mismo formato del TXT de la práctica en C#)
+    datos = (f"Nombres: {nombres.title()}\n"
+             f"Apellidos: {apellidos.title()}\n"
+             f"Genero: {genero}\n"
+             f"Edad: {int(edad)}\n"
+             f"Telefono: {telefono}\n"
+             f"Estatura: {float(estatura):.2f}\n"
+             f"Fecha: {datetime.now():%d/%m/%Y %H:%M}")
+ 
+    # Confirmar antes de guardar
+    if not messagebox.askokcancel("¿Guardar este registro?", datos):
+        return
+ 
+    # Guardar en el TXT controlando posibles errores
+    try:
+        with open(RUTA_ARCHIVO, "a", encoding="utf-8") as archivo:
             archivo.write(datos + "\n\n")
+    except OSError as error:
+        messagebox.showerror("Error", f"No se pudo guardar el archivo:\n{error}")
+        return
  
-        # Mostrar un mensaje con los datos capturados
-        messagebox.showinfo("Información", "Datos guardados con éxito:\n\n" + datos)
- 
-        # Limpiar los controles después de guardar
-        limpiar_campos()
-    else:
-        messagebox.showerror("Error", "Por favor, ingrese datos válidos en los campos.")
+    messagebox.showinfo("Éxito", "Registro guardado correctamente.")
+    limpiar_campos()
  
  
 def limpiar_campos():
-    entry_nombres.delete(0, tk.END)
-    entry_apellidos.delete(0, tk.END)
-    entry_edad.delete(0, tk.END)
-    entry_estatura.delete(0, tk.END)
-    entry_telefono.delete(0, tk.END)
-    var_genero.set(0)
+    for entry in entradas:
+        entry.delete(0, tk.END)
+        entry.config(bg="white")  # Quita el color de error
+    var_genero.set("")
+    entry_nombres.focus()         # Cursor listo en el primer campo
  
  
-def es_entero_valido(valor):
-    try:
-        int(valor)
-        return True
-    except ValueError:
-        return False
- 
- 
-def es_decimal_valido(valor):
-    try:
-        float(valor)
-        return True
-    except ValueError:
-        return False
- 
- 
-def es_entero_valido_de_10_digitos(valor):
-    return valor.isdigit() and len(valor) == 10
- 
- 
-def es_texto_valido(valor):
-    return bool(re.match("^[a-zA-Z\s]+$", valor))
- 
- 
-# Crear la ventana principal
+### Creación de la ventana
 ventana = tk.Tk()
-ventana.title("Formulario")
+ventana.title("Formulario de Registro")
+ventana.geometry("360x520")
+ventana.resizable(False, False)
+ventana.eval("tk::PlaceWindow . center")  # Abre centrada en la pantalla
  
-# Crear variables para los RadioButtons
-var_genero = tk.IntVar()
+# Variable para los RadioButtons
+var_genero = tk.StringVar()
  
-# Crear etiquetas y campos de entrada
+# Permite que Edad y Teléfono solo acepten números al teclear
+vcmd = ventana.register(limitar_digitos)
+ 
+## Creación de etiquetas y campos de entrada
 label_nombres = tk.Label(ventana, text="Nombres:")
-label_nombres.pack()
-entry_nombres = tk.Entry(ventana)
+label_nombres.pack(pady=(10, 0))
+entry_nombres = tk.Entry(ventana, width=30)
 entry_nombres.pack()
  
 label_apellidos = tk.Label(ventana, text="Apellidos:")
-label_apellidos.pack()
-entry_apellidos = tk.Entry(ventana)
+label_apellidos.pack(pady=(10, 0))
+entry_apellidos = tk.Entry(ventana, width=30)
 entry_apellidos.pack()
  
 label_edad = tk.Label(ventana, text="Edad:")
-label_edad.pack()
-entry_edad = tk.Entry(ventana)
+label_edad.pack(pady=(10, 0))
+entry_edad = tk.Entry(ventana, width=30, validate="key", validatecommand=(vcmd, "%P", 3))
 entry_edad.pack()
  
-label_estatura = tk.Label(ventana, text="Estatura (cm):")
-label_estatura.pack()
-entry_estatura = tk.Entry(ventana)
+label_estatura = tk.Label(ventana, text="Estatura (m):")
+label_estatura.pack(pady=(10, 0))
+entry_estatura = tk.Entry(ventana, width=30)
 entry_estatura.pack()
  
 label_telefono = tk.Label(ventana, text="Teléfono:")
-label_telefono.pack()
-entry_telefono = tk.Entry(ventana)
+label_telefono.pack(pady=(10, 0))
+entry_telefono = tk.Entry(ventana, width=30, validate="key", validatecommand=(vcmd, "%P", 10))
 entry_telefono.pack()
  
+# Lista con todos los campos (la usa limpiar_campos)
+entradas = [entry_nombres, entry_apellidos, entry_edad, entry_estatura, entry_telefono]
+ 
+## Creación de RadioButtons
 label_genero = tk.Label(ventana, text="Género:")
-label_genero.pack()
+label_genero.pack(pady=(10, 0))
  
-rb_hombre = tk.Radiobutton(ventana, text="Hombre", variable=var_genero, value=1)
-rb_hombre.pack()
+rb_masculino = tk.Radiobutton(ventana, text="Masculino", variable=var_genero, value="Masculino")
+rb_masculino.pack()
  
-rb_mujer = tk.Radiobutton(ventana, text="Mujer", variable=var_genero, value=2)
-rb_mujer.pack()
+rb_femenino = tk.Radiobutton(ventana, text="Femenino", variable=var_genero, value="Femenino")
+rb_femenino.pack()
  
-# Botón para guardar datos
-btn_guardar = tk.Button(ventana, text="Guardar", command=guardar_datos)
-btn_guardar.pack()
+rb_otro = tk.Radiobutton(ventana, text="Otro", variable=var_genero, value="Otro")
+rb_otro.pack()
  
-# Botón para borrar campos
-btn_borrar = tk.Button(ventana, text="Borrar Campos", command=limpiar_campos)
+## Creación de Botones
+btn_guardar = tk.Button(ventana, text="Guardar", width=15, bg="#4CAF50", fg="white",
+                        command=guardar_datos)
+btn_guardar.pack(pady=(20, 5))
+ 
+btn_borrar = tk.Button(ventana, text="Borrar Campos", width=15, command=limpiar_campos)
 btn_borrar.pack()
  
-# Iniciar la aplicación
+ventana.bind("<Return>", lambda evento: guardar_datos())  # Enter = Guardar
+entry_nombres.focus()
+ 
+### Ejecución de la ventana
 ventana.mainloop()

@@ -1,0 +1,8 @@
+Nombres: Luis
+Apellidos: Garcia
+Genero: Masculino
+Edad: 19
+Telefono: 9611255666
+Estatura: 1.78
+Fecha: 11/10/2026 23:05
+
